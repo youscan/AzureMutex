@@ -1,0 +1,36 @@
+name: dotnet package
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    # container: mcr.microsoft.com/dotnet/sdk:6.0.100
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet: [ '6.0.100' ]    
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+        # No simple reciept to curl it, so, let;'s just wait'
+        options: >-
+          --health-cmd "sleep 5"
+          --health-interval 3s    
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Install dependencies
+        run: dotnet restore src
+      - name: Build
+        run: dotnet build --configuration Release --no-restore src
+      - name: Test
+        env: 
+          # Default storage emulator connection string
+          #   https://docs.microsoft.com/en-us/azure/storage/common/storage-use-emulator#connect-to-the-emulator-account-using-the-shortcut
+          TESTS_DEVELOPMENTSTORAGEACCOUNT: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
+        run: dotnet test --no-restore --verbosity normal src

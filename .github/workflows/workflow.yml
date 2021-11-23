@@ -43,6 +43,6 @@ jobs:
         run: dotnet pack --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
       - name: Publish package to GitHub registry
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg -s https://nuget.pkg.github.com/legigor/index.json -k ${GITHUB_TOKEN}  
+        run: dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg -s https://nuget.pkg.github.com/${{ GITHUB_REPOSITORY }}/index.json -k ${GITHUB_TOKEN}  
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

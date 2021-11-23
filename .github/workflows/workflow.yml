@@ -4,7 +4,6 @@ on: [push, pull_request]
 
 jobs:
   build:
-    # container: mcr.microsoft.com/dotnet/sdk:6.0.100
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -14,7 +13,7 @@ jobs:
         image: mcr.microsoft.com/azure-storage/azurite
         ports:
           - 10000:10000
-        # No simple reciept to curl it, so, let;'s just wait'
+        # No simple reciept to curl it, so, let's just wait
         options: >-
           --health-cmd "sleep 5"
           --health-interval 3s    
@@ -29,8 +28,21 @@ jobs:
       - name: Build
         run: dotnet build --configuration Release --no-restore src
       - name: Test
+        if: ${{ !env.ACT }}
+        run: dotnet test --no-restore --no-build --configuration Release src
         env: 
           # Default storage emulator connection string
           #   https://docs.microsoft.com/en-us/azure/storage/common/storage-use-emulator#connect-to-the-emulator-account-using-the-shortcut
           TESTS_DEVELOPMENTSTORAGEACCOUNT: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
-        run: dotnet test --no-restore --verbosity normal src
+      - name: Get tag name
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        id: vars
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/v}
+      - name: Build package
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: dotnet pack --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
+      - name: Publish package to GitHub registry
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg -s https://nuget.pkg.github.com/legigor/index.json -k ${GITHUB_TOKEN}  
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

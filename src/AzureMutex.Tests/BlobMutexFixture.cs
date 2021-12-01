@@ -75,8 +75,6 @@ namespace AzureMutex.Tests
             return new BlobMutex(container, "mutex");
         }
 
-        static string AzureStorageConnectionString() =>
-            Environment.GetEnvironmentVariable("TESTS_DEVELOPMENTSTORAGEACCOUNT")
-            ?? throw new InvalidOperationException("Specify 'TESTS_DEVELOPMENTSTORAGEACCOUNT' environment variable");
+        static string AzureStorageConnectionString() => "UseDevelopmentStorage=true";
     }
 }

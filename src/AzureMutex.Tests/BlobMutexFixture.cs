@@ -69,6 +69,17 @@ namespace AzureMutex.Tests
             Assert.Null(concurrentLease);
         }
 
+        [Test]
+        public async Task When_releasing_auto_renewed()
+        {
+            var lease = await Mutex().TryAcquireAutoRenewed();
+            await lease!.DisposeAsync();
+            Assert.DoesNotThrowAsync(async () => await lease.DisposeAsync());
+
+            await using var concurrentLease = await Mutex().TryAcquireAutoRenewed();
+            Assert.NotNull(concurrentLease);
+        }
+
         static BlobMutex Mutex()
         {
             var container = new BlobContainerClient(AzureStorageConnectionString(), "mutex");

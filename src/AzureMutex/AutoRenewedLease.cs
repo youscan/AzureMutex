@@ -6,7 +6,6 @@ namespace AzureMutex
 {
     sealed class AutoRenewedLease : IAsyncDisposable
     {
-        readonly CancellationTokenSource cts = new();
         readonly Lease lease;
         readonly PeriodicTimer timer;
         readonly Task renew;
@@ -20,17 +19,12 @@ namespace AzureMutex
 
         async Task Renew()
         {
-            try
-            {
-                while (await timer.WaitForNextTickAsync(cts.Token))
-                    await lease.Renew();
-            }
-            catch (OperationCanceledException) { }
+            while (await timer.WaitForNextTickAsync())
+                await lease.Renew();
         }
 
         public async ValueTask DisposeAsync()
         {
-            cts.Cancel();
             timer.Dispose();
             try
             {
@@ -39,7 +33,6 @@ namespace AzureMutex
             finally
             {
                 await lease.DisposeAsync();
-                cts.Dispose();
             }
         }
     }

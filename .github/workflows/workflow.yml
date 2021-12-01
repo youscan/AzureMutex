@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet: [ '6.0.100' ]    
+        dotnet: [ '6.0.100' ]
     services:
       azurite:
         image: mcr.microsoft.com/azure-storage/azurite
@@ -38,11 +38,9 @@ jobs:
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/v}
-      - name: Build package
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: dotnet pack --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
-      - name: Publish package to GitHub registry
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg -s https://nuget.pkg.github.com/${{ env.GITHUB_REPOSITORY }}/index.json -k ${GITHUB_TOKEN}  
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push the package package
+        if: steps.vars.outputs.tag != null
+        run: |
+          dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/youscan/index.json"
+          dotnet pack --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
+          dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --source "github"

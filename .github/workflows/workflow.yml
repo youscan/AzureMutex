@@ -40,4 +40,6 @@ jobs:
         run: |
           dotnet nuget add source --username youscan --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/youscan/index.json"
         # dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
+        dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=0.0.1 -o output/0.0.1 src
         # dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --source "github"
+        dotnet nuget push output/0.0.1/*.nupkg --source "github"

@@ -5,9 +5,6 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dotnet: [ '6.0.100' ]
     services:
       azurite:
         image: mcr.microsoft.com/azure-storage/azurite
@@ -22,7 +19,7 @@ jobs:
       - name: Setup dotnet
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: ${{ matrix.dotnet }}
+          dotnet-version: "6.0.100"
       - name: Install dependencies
         run: dotnet restore src
       - name: Build
@@ -41,6 +38,6 @@ jobs:
       - name: Build and push the package package
         if: steps.vars.outputs.tag != null
         run: |
-          dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/youscan/index.json"
-          dotnet pack --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
+          dotnet nuget add source --username youscan --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/youscan/index.json"
+          dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
           dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --source "github"

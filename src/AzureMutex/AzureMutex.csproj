@@ -5,6 +5,10 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <PackageId>AzureMutex</PackageId>
+    <Authors>@mazurdmt @vansha</Authors>
+    <Company>YouScan</Company>
+    <PackageDescription>Distributed mutex based on Azure Blob</PackageDescription>  
     <RepositoryUrl>https://github.com/youscan/AzureMutex.git</RepositoryUrl>
   </PropertyGroup>
 

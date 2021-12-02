@@ -5,15 +5,15 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
-    # services:
-    #   azurite:
-    #     image: mcr.microsoft.com/azure-storage/azurite
-    #     ports:
-    #       - 10000:10000
-    #     # No simple reciept to curl it, so, let's just wait
-    #     options: >-
-    #       --health-cmd "sleep 5"
-    #       --health-interval 3s    
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+        # No simple reciept to curl it, so, let's just wait
+        options: >-
+          --health-cmd "sleep 5"
+          --health-interval 3s    
     steps:
       - uses: actions/checkout@v2
       - name: Setup dotnet
@@ -24,22 +24,20 @@ jobs:
         run: dotnet restore src
       - name: Build
         run: dotnet build --configuration Release --no-restore src
-      # - name: Test
-      #   if: ${{ !env.ACT }}
-      #   run: dotnet test --no-restore --no-build --configuration Release src
-      #   env: 
-      #     # Default storage emulator connection string
-      #     #   https://docs.microsoft.com/en-us/azure/storage/common/storage-use-emulator#connect-to-the-emulator-account-using-the-shortcut
-      #     TESTS_DEVELOPMENTSTORAGEACCOUNT: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
+      - name: Test
+        if: ${{ !env.ACT }}
+        run: dotnet test --no-restore --no-build --configuration Release src
+        env: 
+          # Default storage emulator connection string
+          #   https://docs.microsoft.com/en-us/azure/storage/common/storage-use-emulator#connect-to-the-emulator-account-using-the-shortcut
+          TESTS_DEVELOPMENTSTORAGEACCOUNT: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
       - name: Get tag name
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: vars
         run: echo ::set-output name=tag::${GITHUB_REF#refs/*/v}
       - name: Build and push the package package
-        # if: steps.vars.outputs.tag != null
+        if: steps.vars.outputs.tag != null
         run: |
           dotnet nuget add source --username youscan --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/youscan/index.json"
-          # dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
-          dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=0.0.1 -o output/0.0.1 src
-          # dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --source "github"
-          dotnet nuget push output/0.0.1/*.nupkg --source "github"
+          dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
+          dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.symbols.nupkg --source "github"

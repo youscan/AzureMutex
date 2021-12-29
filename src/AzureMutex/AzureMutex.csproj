@@ -10,12 +10,14 @@
 
   <PropertyGroup>
     <PackageId>AzureMutex</PackageId>
-    <Authors>@mazurdmt @vansha</Authors>
     <Company>YouScan</Company>
+    <Copyright>Copyright (c) 2021 YouScan</Copyright>
     <PackageDescription>Distributed mutex based on Azure Blob</PackageDescription>
     <RepositoryUrl>https://github.com/youscan/AzureMutex.git</RepositoryUrl>
+    <ProjectUrl>https://github.com/youscan/AzureMutex</ProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>azure mutex distributed lock async</PackageTags>
   </PropertyGroup>
 
 </Project>

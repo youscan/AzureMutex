@@ -39,5 +39,4 @@ jobs:
         if: steps.vars.outputs.tag != null
         run: |
           dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
-          dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.symbols.nupkg --source "github"
           dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --api-key ${{ secrets.NUGET_API_TOKEN }} --source https://api.nuget.org/v3/index.json

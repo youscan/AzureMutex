@@ -23,3 +23,6 @@ bld/
 
 # Mac crap
 .DS_store
+
+# NuGet output dir
+/out/

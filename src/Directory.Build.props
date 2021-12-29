@@ -2,10 +2,9 @@
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <LangVersion>10.0</LangVersion>
-    <DebugType>embedded</DebugType>
+    <DebugType>portable</DebugType>
     <DebugSymbols>true</DebugSymbols>
     <Nullable>enable</Nullable>
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
-
 </Project>

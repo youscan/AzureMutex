@@ -5,7 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="../../LICENSE" Pack="true" PackagePath="" />
     <None Include="../../README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
@@ -15,7 +14,7 @@
     <Company>YouScan</Company>
     <PackageDescription>Distributed mutex based on Azure Blob</PackageDescription>
     <RepositoryUrl>https://github.com/youscan/AzureMutex.git</RepositoryUrl>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 

@@ -1,6 +1,6 @@
 name: dotnet package
 
-on: [push, pull_request]
+on: [push, pull_request, create]
 
 jobs:
   build:

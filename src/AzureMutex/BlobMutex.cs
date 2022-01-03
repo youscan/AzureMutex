@@ -6,95 +6,61 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 
-namespace AzureMutex
+namespace AzureMutex;
+
+public class BlobMutex
 {
-    public class BlobMutex
+    readonly BlobContainerClient container;
+    readonly BlobClient blob;
+
+    public BlobMutex(string connectionString, string containerName, string key) :
+        this(new BlobContainerClient(connectionString, containerName), key) { }
+
+    public BlobMutex(BlobContainerClient container, string key)
     {
-        readonly BlobContainerClient container;
-        readonly BlobClient blob;
+        this.container = container;
+        blob = container.GetBlobClient(key);
+    }
 
-        public BlobMutex(string connectionString, string containerName, string key) :
-            this(new BlobContainerClient(connectionString, containerName), key) { }
-
-        public BlobMutex(BlobContainerClient container, string key)
+    public async Task<Lease> Acquire()
+    {
+        try
         {
-            this.container = container;
-            blob = container.GetBlobClient(key);
+            return await DoAcquire();
         }
-
-        public async Task<Lease> Acquire()
+        catch (RequestFailedException e) when (e.ErrorCode == BlobErrorCode.BlobNotFound ||
+                                               e.ErrorCode == BlobErrorCode.ContainerNotFound)
         {
-            try
-            {
-                return await DoAcquire();
-            }
-            catch (RequestFailedException e) when (e.ErrorCode == BlobErrorCode.BlobNotFound || e.ErrorCode == BlobErrorCode.ContainerNotFound)
-            {
-                await Init();
-                return await DoAcquire();
-            }
-            catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.Conflict)
-            {
-                throw new ConcurrentAccessException("Failed to acquire lock. It's already taken");
-            }
+            await Init();
+            return await DoAcquire();
         }
-
-        public async Task Renew(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).RenewAsync();
-        public async Task Release(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).ReleaseAsync();
-
-        async Task<Lease> DoAcquire()
+        catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.Conflict)
         {
-            var leaseId = (await blob.GetBlobLeaseClient().AcquireAsync(TimeSpan.FromSeconds(60))).Value.LeaseId;
-            return new Lease(leaseId, this);
-        }
-
-        async Task Init()
-        {
-            await container.CreateIfNotExistsAsync();
-            try
-            {
-                await blob.UploadAsync(BinaryData.FromString(""), new BlobUploadOptions
-                {
-                    Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All }
-                });
-            }
-            catch (RequestFailedException ignore) when (Leased(ignore)) { }
-
-            static bool Leased(RequestFailedException ex) =>
-                ex.ErrorCode == BlobErrorCode.ConditionNotMet ||
-                ex.ErrorCode == BlobErrorCode.LeaseIdMissing;
+            throw new ConcurrentAccessException("Failed to acquire lock. It's already taken");
         }
     }
 
-    public sealed class Lease : IAsyncDisposable
+    public async Task Renew(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).RenewAsync();
+    public async Task Release(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).ReleaseAsync();
+
+    async Task<Lease> DoAcquire()
     {
-        public readonly string Id;
-        readonly BlobMutex mutex;
-        bool disposed;
-
-        public Lease(string id, BlobMutex mutex)
-        {
-            Id = id;
-            this.mutex = mutex;
-        }
-
-        public async Task Renew() => await mutex.Renew(this);
-
-        public async ValueTask DisposeAsync()
-        {
-            if (!disposed)
-            {
-                await mutex.Release(this);
-                disposed = true;
-            }
-        }
+        var leaseId = (await blob.GetBlobLeaseClient().AcquireAsync(TimeSpan.FromSeconds(60))).Value.LeaseId;
+        return new Lease(leaseId, this);
     }
 
-    [Serializable]
-    public class ConcurrentAccessException : Exception
+    async Task Init()
     {
-        public ConcurrentAccessException() { }
-        public ConcurrentAccessException(string message) : base(message) { }
-        public ConcurrentAccessException(string message, Exception innerException) : base(message, innerException) { }
+        await container.CreateIfNotExistsAsync();
+        try
+        {
+            await blob.UploadAsync(BinaryData.FromString(""),
+                new BlobUploadOptions { Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All } });
+        }
+        catch (RequestFailedException ignore) when (Leased(ignore)) { }
+
+        static bool Leased(RequestFailedException ex) =>
+            ex.ErrorCode == BlobErrorCode.ConditionNotMet ||
+            ex.ErrorCode == BlobErrorCode.LeaseIdMissing;
     }
 }

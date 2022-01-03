@@ -6,7 +6,7 @@ namespace AzureMutex
 {
     public static class BlobMutexExtensions
     {
-        public static async Task<IAsyncDisposable?> TryAcquireAutoRenewed(this BlobMutex mutex)
+        public static async Task<AutoRenewedLease?> TryAcquireAutoRenewed(this BlobMutex mutex)
         {
             try
             {
@@ -18,7 +18,7 @@ namespace AzureMutex
             }
         }
 
-        static async Task<IAsyncDisposable> AcquireAutoRenewed(this BlobMutex mutex, TimeSpan checkInterval, CancellationToken cancellation)
+        static async Task<AutoRenewedLease> AcquireAutoRenewed(this BlobMutex mutex, TimeSpan checkInterval, CancellationToken cancellation)
         {
             using var timer = new PeriodicTimer(checkInterval);
             do
@@ -47,7 +47,26 @@ namespace AzureMutex
         public static async Task RunSingleInstance(this BlobMutex mutex, Func<CancellationToken, Task> func, TimeSpan checkInterval, CancellationToken cancellation)
         {
             await using var lease = await mutex.AcquireAutoRenewed(checkInterval, cancellation);
-            await func(cancellation);
+
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lease.LeaseLost);
+            try
+            {
+                await func(cts.Token);
+            }
+            catch (OperationCanceledException) when (lease.LeaseLost.IsCancellationRequested)
+            {
+                // Distinguish regular, expected cancellation from the interruption caused by a lost lease.
+                // To allow client code decide on its own how to deal with it — retry or fail.
+                throw new LeaseLostException();
+            }
         }
+    }
+
+    [Serializable]
+    public class LeaseLostException : Exception
+    {
+        public LeaseLostException() : this("Lease was lost") {}
+        public LeaseLostException(string message) : base(message) {}
+        public LeaseLostException(string message, Exception inner) : base(message, inner) {}
     }
 }

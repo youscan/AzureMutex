@@ -26,13 +26,12 @@ namespace AzureMutex
         {
             try
             {
-                var leaseId = (await blob.GetBlobLeaseClient().AcquireAsync(TimeSpan.FromSeconds(60))).Value.LeaseId;
-                return new Lease(leaseId, this);
+                return await DoAcquire();
             }
             catch (RequestFailedException e) when (e.ErrorCode == BlobErrorCode.BlobNotFound || e.ErrorCode == BlobErrorCode.ContainerNotFound)
             {
                 await Init();
-                return await Acquire();
+                return await DoAcquire();
             }
             catch (RequestFailedException e) when (e.Status == (int)HttpStatusCode.Conflict)
             {
@@ -42,6 +41,12 @@ namespace AzureMutex
 
         public async Task Renew(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).RenewAsync();
         public async Task Release(Lease lease) => await blob.GetBlobLeaseClient(lease.Id).ReleaseAsync();
+
+        async Task<Lease> DoAcquire()
+        {
+            var leaseId = (await blob.GetBlobLeaseClient().AcquireAsync(TimeSpan.FromSeconds(60))).Value.LeaseId;
+            return new Lease(leaseId, this);
+        }
 
         async Task Init()
         {

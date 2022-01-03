@@ -19,9 +19,9 @@ public static class BlobMutexExtensions
     }
 
     static async Task<AutoRenewedLease> AcquireAutoRenewed(
-        this BlobMutex mutex, TimeSpan checkInterval, CancellationToken cancellation)
+        this BlobMutex mutex, CancellationToken cancellation, TimeSpan? checkInterval = null)
     {
-        using var timer = new PeriodicTimer(checkInterval);
+        using var timer = new PeriodicTimer(checkInterval ?? TimeSpan.FromMinutes(1));
         do
         {
             var lease = await mutex.TryAcquireAutoRenewed();
@@ -43,12 +43,12 @@ public static class BlobMutexExtensions
     public static Func<CancellationToken, Task> EnsureSingleInstance(
         this Func<CancellationToken, Task> job,
         BlobMutex mutex, TimeSpan? checkInterval = null) =>
-        c => mutex.RunSingleInstance(job, checkInterval ?? TimeSpan.FromMinutes(1), c);
+        c => mutex.RunSingleInstance(job, c, checkInterval ?? TimeSpan.FromMinutes(1));
 
     public static async Task RunSingleInstance(
-        this BlobMutex mutex, Func<CancellationToken, Task> func, TimeSpan checkInterval, CancellationToken cancellation)
+        this BlobMutex mutex, Func<CancellationToken, Task> func, CancellationToken cancellation, TimeSpan? checkInterval = null)
     {
-        await using var lease = await mutex.AcquireAutoRenewed(checkInterval, cancellation);
+        await using var lease = await mutex.AcquireAutoRenewed(cancellation, checkInterval);
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lease.LeaseLost);
         try

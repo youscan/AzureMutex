@@ -42,7 +42,7 @@ public class AutoRenewedLeaseFixture
     public async Task When_loosing_lease()
     {
         var started = false;
-        var task = Mutex().RunSingleInstance(LongRunningTask, TimeSpan.FromSeconds(1), CancellationToken.None);
+        var task = Mutex().RunSingleInstance(LongRunningTask, CancellationToken.None);
 
         SpinWait.SpinUntil(() => started, TimeSpan.FromSeconds(2)); // Wait until long-running operation is started
         await Container().DeleteAsync(); // Simulate a trouble (e.g. network fails or storage is not available)

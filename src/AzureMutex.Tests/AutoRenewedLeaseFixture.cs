@@ -57,7 +57,7 @@ public class AutoRenewedLeaseFixture
         var cts = new CancellationTokenSource();
         var canceled = Mutex().RunSingleInstance(c => Task.Delay(TimeSpan.FromSeconds(2), c), cts.Token);
 
-        cts.CancelAfter(TimeSpan.FromSeconds(1));
+        cts.Cancel();
         Assert.ThrowsAsync<TaskCanceledException>(() => canceled, "should propagate original exception");
 
         await AssertLeaseReleased();

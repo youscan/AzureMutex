@@ -32,8 +32,6 @@ public class BlobMutexFixture
 
         var concurrent = Mutex();
         Assert.ThrowsAsync<ConcurrentAccessException>(() => concurrent.Acquire());
-
-        Assert.Null(await Mutex().TryAcquireAutoRenewed());
     }
 
     [Test]
@@ -43,7 +41,7 @@ public class BlobMutexFixture
         await lease.DisposeAsync();
         Assert.DoesNotThrowAsync(async () => await lease.DisposeAsync());
 
-        await using var concurrentLease = await Mutex().TryAcquireAutoRenewed();
+        await using var concurrentLease = await Mutex().TryAcquire();
         Assert.NotNull(concurrentLease);
     }
 

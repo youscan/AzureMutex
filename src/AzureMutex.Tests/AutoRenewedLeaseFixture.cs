@@ -17,25 +17,50 @@ public class AutoRenewedLeaseFixture
 
     [Test]
     [Category("Slow")]
-    public async Task When_acquiring_auto_renewed()
+    public async Task When_auto_renewing_lease()
     {
-        await using var _ = await Mutex().TryAcquireAutoRenewed();
+        var cts = new CancellationTokenSource();
+        var task = Mutex().RunSingleInstance(c => Task.Delay(TimeSpan.FromSeconds(100), c), cts.Token);
 
-        await Task.Delay(TimeSpan.FromSeconds(60)); // default lease time
+        await Task.Delay(TimeSpan.FromSeconds(65)); // 60 sec is a default lease time
 
-        await using var concurrentLease = await Mutex().TryAcquireAutoRenewed();
-        Assert.Null(concurrentLease);
+        Assert.False(task.IsCompleted);
+
+        await using var concurrentLease = await Mutex().TryAcquire();
+        Assert.Null(concurrentLease, "Lease is held due to auto renew");
+
+        cts.Cancel();
+        Assert.ThrowsAsync<TaskCanceledException>(() => task);
     }
 
     [Test]
-    public async Task When_releasing_auto_renewed()
+    public async Task When_operation_completes()
     {
-        var lease = await Mutex().TryAcquireAutoRenewed();
-        await lease!.DisposeAsync();
-        Assert.DoesNotThrowAsync(async () => await lease.DisposeAsync());
+        var completes = Mutex().RunSingleInstance(_ => Task.CompletedTask, CancellationToken.None);
+        Assert.DoesNotThrowAsync(() => completes, "should not throw");
 
-        await using var concurrentLease = await Mutex().TryAcquireAutoRenewed();
-        Assert.NotNull(concurrentLease);
+        await AssertLeaseReleased();
+    }
+
+    [Test]
+    public async Task When_operation_fails()
+    {
+        var fails = Mutex().RunSingleInstance(_ => throw new DivideByZeroException(), CancellationToken.None);
+        Assert.ThrowsAsync<DivideByZeroException>(() => fails, "should propagate original exception");
+
+        await AssertLeaseReleased();
+    }
+
+    [Test]
+    public async Task When_operation_canceled()
+    {
+        var cts = new CancellationTokenSource();
+        var canceled = Mutex().RunSingleInstance(c => Task.Delay(TimeSpan.FromSeconds(2), c), cts.Token);
+
+        cts.CancelAfter(TimeSpan.FromSeconds(1));
+        Assert.ThrowsAsync<TaskCanceledException>(() => canceled, "should propagate original exception");
+
+        await AssertLeaseReleased();
     }
 
     [Test]
@@ -54,6 +79,12 @@ public class AutoRenewedLeaseFixture
             started = true;
             await Task.Delay(TimeSpan.FromSeconds(20), cancellation); // Auto-renew happens every 15 sec
         }
+    }
+
+    static async Task AssertLeaseReleased()
+    {
+        await using var lease = await Mutex().Acquire();
+        Assert.NotNull(lease, "should release lease");
     }
 
     static BlobMutex Mutex() => new(Container(), "mutex");

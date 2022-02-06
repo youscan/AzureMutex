@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace AzureMutex;
@@ -21,7 +22,19 @@ public sealed class Lease : IAsyncDisposable
     {
         if (!disposed)
         {
-            await mutex.Release(this);
+            try
+            {
+                await mutex.Release(this);
+            }
+            catch (Exception e)
+            {
+                // Swallow exception. We could not do much here. But throwing an
+                // exception could result in an exception within a finally block
+                // of using statement. Which could result in a lost exception
+                // from client code.
+                Trace.TraceError("Failed to release lease. Error details:\n{0}", e);
+            }
+
             disposed = true;
         }
     }

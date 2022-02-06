@@ -6,11 +6,11 @@ namespace AzureMutex;
 
 public static class BlobMutexExtensions
 {
-    public static async Task<AutoRenewedLease?> TryAcquireAutoRenewed(this BlobMutex mutex)
+    public static async Task<Lease?> TryAcquire(this BlobMutex mutex)
     {
         try
         {
-            return new AutoRenewedLease(await mutex.Acquire());
+            return await mutex.Acquire();
         }
         catch (ConcurrentAccessException)
         {
@@ -18,16 +18,16 @@ public static class BlobMutexExtensions
         }
     }
 
-    static async Task<AutoRenewedLease> AcquireAutoRenewed(
-        this BlobMutex mutex, CancellationToken cancellation, TimeSpan? checkInterval = null)
+    public static async Task<Lease> AcquireOrWait(this BlobMutex mutex,
+        CancellationToken cancellation, TimeSpan? acquireAttemptInterval = null)
     {
-        using var timer = new PeriodicTimer(checkInterval ?? TimeSpan.FromMinutes(1));
+        using var timer = new PeriodicTimer(acquireAttemptInterval ?? TimeSpan.FromMinutes(1));
         do
         {
-            var lease = await mutex.TryAcquireAutoRenewed();
+            var lease = await mutex.TryAcquire();
             if (lease != null)
                 return lease;
-        } while (await timer.WaitForNextTickAsync(cancellation));
+        } while (!cancellation.IsCancellationRequested && await timer.WaitForNextTickAsync(cancellation));
 
         throw new OperationCanceledException(cancellation);
     }
@@ -48,18 +48,56 @@ public static class BlobMutexExtensions
     public static async Task RunSingleInstance(
         this BlobMutex mutex, Func<CancellationToken, Task> func, CancellationToken cancellation, TimeSpan? checkInterval = null)
     {
-        await using var lease = await mutex.AcquireAutoRenewed(cancellation, checkInterval);
+        await using var lease = await mutex.AcquireOrWait(cancellation, checkInterval);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        var main = func(cts.Token);
+        var renew = AutoRenew(lease, cts.Token);
 
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lease.LeaseLost);
-        try
+        await RunUntilAnyCompletes(main, renew, cts);
+
+        static async Task RunUntilAnyCompletes(Task main, Task renew, CancellationTokenSource leaseCts)
         {
-            await func(cts.Token);
+            // Run until any finishes
+            await Task.WhenAny(main, renew);
+
+            // Cancel main or renew lease task
+            leaseCts.Cancel();
+
+            try
+            {
+                // Ensure all completed
+                await Task.WhenAll(main, renew);
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    // Either throws LeaseLostException which caused the trouble.
+                    // Or ignores OperationCanceledException to not lost possible
+                    // exception thrown by main func
+                    await renew;
+                }
+                catch (OperationCanceledException) { }
+
+                // We're most interested in the exception of the main func. Ensure it iss not lost
+                await main;
+            }
         }
-        catch (OperationCanceledException) when (lease.LeaseLost.IsCancellationRequested)
+
+        static async Task AutoRenew(Lease lease, CancellationToken cancellation)
         {
-            // Distinguish regular, expected cancellation from the interruption caused by a lost lease.
-            // To allow client code decide on its own how to deal with it — retry or fail.
-            throw new LeaseLostException();
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+            while (!cancellation.IsCancellationRequested && await timer.WaitForNextTickAsync(cancellation))
+            {
+                try
+                {
+                    await lease.Renew();
+                }
+                catch (Exception e)
+                {
+                    throw new LeaseLostException("Lease was lost", e);
+                }
+            }
         }
     }
 }

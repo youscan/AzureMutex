@@ -36,3 +36,13 @@ jobs:
         run: |
           dotnet pack --no-restore --no-build --configuration Release --include-symbols --include-source -p:SymbolPackageFormat=snupkg -p:PackageVersion=${{ steps.vars.outputs.tag }} -o output/${{ steps.vars.outputs.tag }} src
           dotnet nuget push output/${{ steps.vars.outputs.tag }}/*.nupkg --api-key ${{ secrets.NUGET_API_TOKEN }} --source https://api.nuget.org/v3/index.json
+      - name: Create release
+        if: steps.vars.outputs.tag != null
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            output/${{ steps.vars.outputs.tag }}/*.nupkg
+          generate_release_notes: true
+          # TODO: Determine the prerelease versions using the NuGet convention https://learn.microsoft.com/en-us/nuget/create-packages/prerelease-packages
+          prerelease: false
+          draft: false

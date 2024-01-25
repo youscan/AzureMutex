@@ -21,7 +21,8 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "6"
-          cache: true
+          # TODO: Enable central package management before enabling this feature https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management
+          cache: false
       - name: Install dependencies
         run: dotnet restore
       - name: Build

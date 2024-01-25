@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <PropertyGroup>
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <AzureStorageBlobsVersion>12.19.1</AzureStorageBlobsVersion>
   </PropertyGroup>
 </Project>

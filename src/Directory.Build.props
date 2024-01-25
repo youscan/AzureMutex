@@ -7,4 +7,7 @@
     <Nullable>enable</Nullable>
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
+  <PropertyGroup>
+    <AzureStorageBlobsVersion>12.10.0</AzureStorageBlobsVersion>
+  </PropertyGroup>
 </Project>

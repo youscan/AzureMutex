@@ -24,10 +24,10 @@ public class AutoRenewedLeaseFixture
 
         await Task.Delay(TimeSpan.FromSeconds(65)); // 60 sec is a default lease time
 
-        Assert.False(task.IsCompleted);
+        Assert.That( task.IsCompleted, Is.False);
 
         await using var concurrentLease = await Mutex().TryAcquire();
-        Assert.Null(concurrentLease, "Lease is held due to auto renew");
+        Assert.That(concurrentLease, Is.Null, "Lease is held due to auto renew");
 
         cts.Cancel();
         Assert.ThrowsAsync<TaskCanceledException>(() => task);
@@ -84,7 +84,7 @@ public class AutoRenewedLeaseFixture
     static async Task AssertLeaseReleased()
     {
         await using var lease = await Mutex().Acquire();
-        Assert.NotNull(lease, "should release lease");
+        Assert.That(lease, Is.Not.Null, "should release lease");
     }
 
     static BlobMutex Mutex() => new(Container(), "mutex");

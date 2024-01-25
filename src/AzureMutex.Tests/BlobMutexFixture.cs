@@ -17,7 +17,7 @@ public class BlobMutexFixture
         try
         {
             await using var lease = await mutex.Acquire();
-            Assert.True(await blob.ExistsAsync());
+            await Assert.ThatAsync( () => blob.ExistsAsync(), Is.True);
         }
         finally
         {
@@ -42,7 +42,7 @@ public class BlobMutexFixture
         Assert.DoesNotThrowAsync(async () => await lease.DisposeAsync());
 
         await using var concurrentLease = await Mutex().TryAcquire();
-        Assert.NotNull(concurrentLease);
+        Assert.That(concurrentLease, Is.Not.Null);
     }
 
     [Test]

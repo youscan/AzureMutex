@@ -8,6 +8,6 @@
     <TargetFramework>net6.0</TargetFramework>
   </PropertyGroup>
   <PropertyGroup>
-    <AzureStorageBlobsVersion>12.10.0</AzureStorageBlobsVersion>
+    <AzureStorageBlobsVersion>12.19.1</AzureStorageBlobsVersion>
   </PropertyGroup>
 </Project>

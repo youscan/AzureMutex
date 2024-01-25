@@ -17,7 +17,8 @@ public class BlobMutexFixture
         try
         {
             await using var lease = await mutex.Acquire();
-            await Assert.ThatAsync( () => blob.ExistsAsync(), Is.True);
+            var doesBlobExist = await blob.ExistsAsync();
+            Assert.That(doesBlobExist.Value, Is.True);
         }
         finally
         {

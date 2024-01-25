@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "6"
-          cache: true
+          cache: false # TODO: Enable it after enable packages locks
       - name: Install dependencies
         run: dotnet restore
       - name: Build
